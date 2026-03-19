@@ -1,0 +1,19 @@
+/* index.css — Global styles and Tailwind import */
+@import "tailwindcss";
+
+/* Custom scrollbar for the dark theme */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0f172a; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* Ensure the globe canvas fills its container */
+.globe-canvas canvas {
+  border-radius: 0.75rem;
+}
+
+/* Pulse animation for event markers */
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
