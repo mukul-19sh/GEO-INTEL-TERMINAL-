@@ -21,11 +21,12 @@ app = FastAPI(title="GeoIntel API", version="1.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Allows all origins for MVP simplicity; update to specific URL if needed
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 NEWSAPI_KEY = os.getenv("NEWSAPI_KEY", "")
 # FORCE EMPTY FOR PROTOTYPE STABILITY: Prevents synchronous blocking in the async event loop

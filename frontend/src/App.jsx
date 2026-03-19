@@ -13,7 +13,9 @@ import GlobalImpactDashboard from './components/GlobalImpactDashboard';
 import CountryDashboard from './components/CountryDashboard';
 import { Activity, ShieldAlert, Zap, MessageSquare, Briefcase } from 'lucide-react';
 
-axios.defaults.baseURL = 'http://127.0.0.1:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+axios.defaults.baseURL = API_BASE_URL;
+
 
 function LiveClock() {
   const [time, setTime] = useState(new Date().toLocaleTimeString('en-US', { hour12: false, timeZoneName: 'short' }));
@@ -54,7 +56,9 @@ function App() {
 
     const connectWS = () => {
       if (!isMounted) return;
-      ws.current = new WebSocket('ws://127.0.0.1:8000/ws/events');
+      const wsUrl = API_BASE_URL.replace('http', 'ws') + '/ws/events';
+      ws.current = new WebSocket(wsUrl);
+
       
       ws.current.onopen = () => {
         if (isMounted) setWsStatus('online');
