@@ -13,6 +13,7 @@ CATEGORY_RULES: dict[str, list[str]] = {
     "energy": [
         "oil", "gas", "petroleum", "opec", "pipeline", "fuel",
         "energy", "lng", "natural gas", "crude", "refinery",
+        "plant", "extraction", "storage", "barrel",
     ],
     "geopolitics": [
         "war", "conflict", "military", "troops", "sanction",
@@ -38,6 +39,16 @@ CATEGORY_RULES: dict[str, list[str]] = {
         "storm", "hurricane", "wildfire", "renewable", "solar",
         "wind energy", "glacier", "temperature",
     ],
+    "supply_chain": [
+        "supply", "export", "import", "logistics", "port", "shipping",
+        "trade", "cargo", "vessel", "freight", "bottleneck", "shortage",
+        "factory", "manufacturing", "production", "raw material",
+    ],
+    "infrastructure": [
+        "powerplant", "grid", "electricity", "utility", "dam", "nuclear",
+        "reactor", "transmission", "substation", "generator", "outage",
+        "blackout", "facility", "infrastructure",
+    ]
 }
 
 # ──────────────────────────────────────────────
@@ -68,7 +79,26 @@ LOCATION_MAP: dict[str, dict] = {
     "north korea":    {"lat": 40.0,  "lng": 127.0, "region": "North Korea"},
     "japan":          {"lat": 36.2,  "lng": 138.3, "region": "Japan"},
     "brazil":         {"lat": -14.2, "lng": -51.9, "region": "Brazil"},
-    "venezuela":      {"lat": 6.4,   "lng": -66.6, "region": "Venezuela"},
+    "taiwan":         {"lat": 23.7,  "lng": 121.0, "region": "Taiwan"},
+    "canada":         {"lat": 56.1,  "lng": -106.3,"region": "Canada"},
+    "australia":      {"lat": -25.2, "lng": 133.7, "region": "Australia"},
+    "singapore":      {"lat": 1.35,  "lng": 103.8, "region": "Singapore"},
+    "switzerland":    {"lat": 46.8,  "lng": 8.2,   "region": "Switzerland"},
+    "italy":          {"lat": 41.8,  "lng": 12.5,  "region": "Italy"},
+    "spain":          {"lat": 40.4,  "lng": -3.7,  "region": "Spain"},
+    "netherlands":    {"lat": 52.1,  "lng": 5.2,   "region": "Netherlands"},
+    "turkey":         {"lat": 38.9,  "lng": 35.2,  "region": "Turkey"},
+    "mexico":         {"lat": 23.6,  "lng": -102.5,"region": "Mexico"},
+    "indonesia":      {"lat": -0.78, "lng": 113.9, "region": "Indonesia"},
+    "vietnam":        {"lat": 14.05, "lng": 108.2, "region": "Vietnam"},
+    "thailand":       {"lat": 15.8,  "lng": 100.9, "region": "Thailand"},
+    "malaysia":       {"lat": 4.2,   "lng": 101.9, "region": "Malaysia"},
+    "norway":         {"lat": 60.4,  "lng": 8.4,   "region": "Norway"},
+    "sweden":         {"lat": 60.1,  "lng": 18.6,  "region": "Sweden"},
+    "finland":        {"lat": 61.9,  "lng": 25.7,  "region": "Finland"},
+    "south africa":   {"lat": -30.5, "lng": 22.9,  "region": "South Africa"},
+    "argentina":      {"lat": -38.4, "lng": -63.6, "region": "Argentina"},
+    "world":          {"lat": 0.0,   "lng": 0.0,   "region": "Global"},
 }
 
 

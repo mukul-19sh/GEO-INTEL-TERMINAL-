@@ -1,6 +1,93 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Clock, TrendingDown, TrendingUp, AlertTriangle, Radio } from 'lucide-react';
 
+function NewsTickerCard({ event, idx }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const isCritical = event.is_breaking;
+  
+  // Derived properties
+  const sourceType = event.confidence?.label === 'High' ? 'official' : 'unofficial';
+  const sectors = event.impact?.map(i => i.sector) || [];
+  const companies = event.impact?.flatMap(i => i.companies || []) || [];
+
+  const maxSectors = 3;
+  const maxCompanies = 4;
+
+  const displaySectors = isExpanded ? sectors : sectors.slice(0, maxSectors);
+  const displayCompanies = isExpanded ? companies : companies.slice(0, maxCompanies);
+
+  const hasMore = sectors.length > maxSectors || companies.length > maxCompanies;
+
+  return (
+    <div key={idx} className={`p-3 rounded-xl border mb-4 w-full backdrop-blur-sm transition-all duration-300 ${isCritical ? 'bg-red-950/20 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.3)]' : 'bg-slate-900/60 border-slate-700/60 shadow-lg'}`}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5 text-[9px] font-bold tracking-widest text-slate-500 uppercase">
+          {isCritical ? <Radio size={10} className="text-red-500 animate-pulse" /> : <Clock size={10} />}
+          {isCritical ? <span className="text-red-400">BREAKING LIVE</span> : "Just In"}
+        </div>
+        {isCritical && <AlertTriangle size={12} className="text-red-500 animate-pulse" />}
+      </div>
+      
+      <div className="flex items-center gap-1.5 mb-2">
+         <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${sourceType === 'official' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50' : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'}`}>
+           {sourceType}
+         </span>
+         <span className="text-[9px] text-slate-400 truncate w-32">{event.source}</span>
+      </div>
+      
+      <h4 className="text-[12px] font-medium text-slate-200 mb-2 leading-snug">
+        {event.title}
+      </h4>
+      
+      {event.url && (
+        <a href={event.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[9px] font-bold text-blue-400 hover:text-blue-300 transition-colors uppercase mb-3 px-2 py-1 bg-slate-800/80 hover:bg-slate-800 rounded border border-slate-700 w-max">
+          View Article ↗
+        </a>
+      )}
+      
+      <div className="border-t border-slate-700/50 pt-2 space-y-2">
+        {sectors.length > 0 && (
+          <div className="flex flex-col gap-1">
+             <span className="text-[9px] text-slate-400 font-bold uppercase">Affected Sectors</span>
+             <div className="flex flex-wrap gap-1">
+               {displaySectors.map((sec, i) => (
+                 <span key={i} className="text-[9px] bg-slate-800 text-slate-300 px-1 py-0.5 rounded border border-slate-700">{sec}</span>
+               ))}
+               {!isExpanded && sectors.length > maxSectors && (
+                 <span className="text-[9px] text-slate-500 py-0.5">+{sectors.length - maxSectors} more</span>
+               )}
+             </div>
+          </div>
+        )}
+        {companies.length > 0 && (
+          <div className="flex flex-col gap-1">
+             <span className="text-[9px] text-slate-400 font-bold uppercase">Key Companies</span>
+             <div className="flex flex-wrap gap-1">
+               {displayCompanies.map((comp, i) => (
+                 <span key={`c${i}`} className="text-[9px] text-blue-400 font-bold">
+                   {comp}{i < displayCompanies.length - 1 ? ',' : ''}
+                 </span>
+               ))}
+               {!isExpanded && companies.length > maxCompanies && (
+                 <span className="text-[9px] text-slate-500">+{companies.length - maxCompanies} more</span>
+               )}
+             </div>
+          </div>
+        )}
+
+        {hasMore && (
+          <button 
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="w-full mt-2 py-1.5 text-[8px] font-black uppercase tracking-[0.15em] text-slate-400 hover:text-blue-400 bg-slate-800/40 hover:bg-blue-900/20 border border-slate-700/60 hover:border-blue-500/40 rounded-lg transition-all duration-300"
+          >
+            {isExpanded ? 'View Less Signal Details' : `View More Impact Analysis (${sectors.length + companies.length})`}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function VerticalNewsTicker({ events = [] }) {
   const scrollRef = useRef(null);
   const [isPaused, setIsPaused] = useState(false);
@@ -11,79 +98,14 @@ export default function VerticalNewsTicker({ events = [] }) {
       intervalId = setInterval(() => {
         if (scrollRef.current) {
           scrollRef.current.scrollTop += 1;
-          // Simple loop: if user hits bottom of actual content, bounce to top or let them stay
-          // Because it's hard to dynamically duplicate children properly in a simple script,
-          // we'll just let it scroll down slowly until the end.
           if (scrollRef.current.scrollTop >= scrollRef.current.scrollHeight - scrollRef.current.clientHeight) {
-            scrollRef.current.scrollTop = 0; // reset to top automatically
+            scrollRef.current.scrollTop = 0;
           }
         }
-      }, 50); // Speed of auto-scroll
+      }, 50);
     }
     return () => clearInterval(intervalId);
   }, [isPaused]);
-
-  const renderCard = (event, idx) => {
-    const isCritical = event.is_breaking;
-    
-    // Derived properties
-    const sourceType = event.confidence?.label === 'High' ? 'official' : 'unofficial';
-    const sectors = event.impact?.map(i => i.sector) || [];
-    const companies = event.impact?.flatMap(i => i.companies || []) || [];
-
-    return (
-      <div key={idx} className={`p-3 rounded-xl border mb-4 w-full backdrop-blur-sm transition-all duration-300 ${isCritical ? 'bg-red-950/20 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.3)]' : 'bg-slate-900/60 border-slate-700/60 shadow-lg'}`}>
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-1.5 text-[9px] font-bold tracking-widest text-slate-500 uppercase">
-            {isCritical ? <Radio size={10} className="text-red-500 animate-pulse" /> : <Clock size={10} />}
-            {isCritical ? <span className="text-red-400">BREAKING LIVE</span> : "Just In"}
-          </div>
-          {isCritical && <AlertTriangle size={12} className="text-red-500 animate-pulse" />}
-        </div>
-        
-        {/* Source Badge */}
-        <div className="flex items-center gap-1.5 mb-2">
-           <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${sourceType === 'official' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50' : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'}`}>
-             {sourceType}
-           </span>
-           <span className="text-[9px] text-slate-400 truncate w-32">{event.source}</span>
-        </div>
-        
-        <h4 className="text-[12px] font-medium text-slate-200 mb-2 leading-snug">
-          {event.title}
-        </h4>
-        
-        {/* View article anchor */}
-        {event.url && (
-          <a href={event.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[9px] font-bold text-blue-400 hover:text-blue-300 transition-colors uppercase mb-3 px-2 py-1 bg-slate-800/80 hover:bg-slate-800 rounded border border-slate-700 w-max">
-            View Article ↗
-          </a>
-        )}
-        
-        <div className="border-t border-slate-700/50 pt-2 space-y-2">
-          <div className="flex flex-col gap-1">
-             <span className="text-[9px] text-slate-400 font-bold uppercase">Affected Sectors</span>
-             <div className="flex flex-wrap gap-1">
-               {sectors.map((sec, i) => (
-                 <span key={i} className="text-[9px] bg-slate-800 text-slate-300 px-1 py-0.5 rounded border border-slate-700">{sec}</span>
-               ))}
-             </div>
-          </div>
-          {companies.length > 0 && (
-            <div className="flex flex-col gap-1">
-               <span className="text-[9px] text-slate-400 font-bold uppercase">Key Companies</span>
-               <div className="flex flex-wrap gap-1">
-                 {companies.slice(0, 4).map((comp, i) => (
-                   <span key={`c${i}`} className="text-[9px] text-blue-400 font-bold">{comp}{i < 3 && i < companies.length - 1 ? ',' : ''}</span>
-                 ))}
-                 {companies.length > 4 && <span className="text-[9px] text-slate-500">+{companies.length - 4} more</span>}
-               </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="w-64 h-full bg-slate-950 flex flex-col overflow-hidden relative border-l border-slate-800 shadow-[inset_10px_0_20px_rgba(0,0,0,0.5)] z-40">
@@ -98,7 +120,6 @@ export default function VerticalNewsTicker({ events = [] }) {
 
       <div className="absolute top-14 left-0 right-0 h-16 bg-gradient-to-b from-slate-950 to-transparent z-10 pointer-events-none"></div>
       
-      {/* Manual & Auto Scroll Container */}
       <div 
         ref={scrollRef}
         onMouseEnter={() => setIsPaused(true)}
@@ -106,16 +127,18 @@ export default function VerticalNewsTicker({ events = [] }) {
         className="flex-1 overflow-y-auto px-4 pt-14 pb-24 custom-scrollbar"
       >
         <div className="flex flex-col pt-4">
-          {events.map((item, idx) => renderCard(item, `n1-${idx}`))}
-          {/* duplicate the list once to allow smooth pseudo-looping visually */}
-          {events.map((item, idx) => renderCard(item, `n2-${idx}`))}
+          {events.map((item, idx) => (
+            <NewsTickerCard key={`n1-${item.id}-${idx}`} event={item} idx={`n1-${idx}`} />
+          ))}
+          {events.map((item, idx) => (
+            <NewsTickerCard key={`n2-${item.id}-${idx}`} event={item} idx={`n2-${idx}`} />
+          ))}
         </div>
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-slate-950 to-transparent z-10 pointer-events-none"></div>
 
       <style>{`
-        /* Custom scrollbar for scenario engine */
         .custom-scrollbar::-webkit-scrollbar {
           width: 4px;
         }

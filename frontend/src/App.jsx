@@ -9,6 +9,8 @@ import PortfolioAnalyzer from './components/PortfolioAnalyzer';
 import StockTicker from './components/StockTicker';
 import VerticalNewsTicker from './components/VerticalNewsTicker';
 import LeaderBoard from './components/LeaderBoard';
+import GlobalImpactDashboard from './components/GlobalImpactDashboard';
+import CountryDashboard from './components/CountryDashboard';
 import { Activity, ShieldAlert, Zap, MessageSquare, Briefcase } from 'lucide-react';
 
 axios.defaults.baseURL = 'http://127.0.0.1:8000';
@@ -178,8 +180,9 @@ function App() {
           </div>
 
           {/* Floating Leaderboard overlay */}
-          <div className="absolute top-6 right-6 w-80 z-20">
+          <div className="absolute top-6 right-6 w-80 z-20 space-y-4">
              <LeaderBoard />
+             <CountryDashboard />
           </div>
         </div>
 
