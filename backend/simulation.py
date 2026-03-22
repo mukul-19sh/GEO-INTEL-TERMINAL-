@@ -5,7 +5,7 @@ Phase 10: Scenario Simulation Engine
 Allows users to test "what-if" scenarios.
 Maps user inputs to predicted sector impacts.
 """
-from impact import map_impact
+from .impact import map_impact
 
 COMPANIES_BY_SECTOR = {
     "Energy": ["ExxonMobil (XOM)", "Chevron (CVX)", "BP (BP)", "Shell (SHEL)"],

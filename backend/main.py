@@ -8,10 +8,11 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from nlp_lite import enrich_event
-from simulation import simulate_scenario
-from portfolio import analyze_portfolio
-from chat import process_chat_query
+from .nlp_lite import enrich_event
+from .simulation import simulate_scenario
+from .portfolio import analyze_portfolio
+from .chat import process_chat_query
+from .pricing_engine import update_prices_jitter, get_market_state
 
 # ──────────────────────────────────────────────
 # App setup
@@ -68,6 +69,96 @@ MARKET_HEALTH_DATA = {
     "UAE": {"index": "DFMGI", "drop": 4.50, "status": "CRASH"}
 }
 
+# ──────────────────────────────────────────────
+# Global Dynamic Event Storage
+# ──────────────────────────────────────────────
+EVENT_ID_COUNTER = 1000
+
+# Initial articles to seed the system
+DYNAMIC_ARTICLES: List[dict] = [
+    {"id": 1, "title": "BREAKING: Iran conducts missile strikes on Qatar LNG plants", "description": "Global energy markets in shock as major Qatari LNG export facilities are targeted.", "source": "Bloomberg", "url": "https://www.google.com/search?q=Bloomberg+Iran+missile+strikes+Qatar+LNG", "minutes_ago": 0},
+    {"id": 2, "title": "MARKET CRASH: Japan's NIKKEI 225 plunges 4.84%", "description": "Asian markets are in freefall as the Nikkei hits a 12-month low.", "source": "GeoIntel", "url": "https://www.google.com/search?q=Nikkei+225+plunges+market+crash", "minutes_ago": 15},
+    {"id": 3, "title": "Australia mining sector faces labor strikes", "description": "Global iron ore and lithium supply chains at risk.", "source": "ABC News", "url": "https://www.google.com/search?q=Australia+mining+strikes+iron+ore+lithium", "minutes_ago": 120},
+    {"id": 4, "title": "USA Federal Reserve emergency rate cut", "description": "Fed drops base rate 50bps to cushion massive job report losses.", "source": "Bloomberg", "url": "https://www.google.com/search?q=Federal+Reserve+emergency+rate+cut+Bloomberg", "minutes_ago": 420},
+]
+
+def generate_market_event() -> dict:
+    """Generates a random market-related event."""
+    global EVENT_ID_COUNTER
+    import random
+    EVENT_ID_COUNTER += 1
+    
+    actions = ["surges", "plunges", "stabilizes", "recovers"]
+    regions = ["Middle East", "Asia-Pacific", "European Union", "North America"]
+    sectors = ["Energy", "Tech", "Semiconductor", "Defense", "Financial"]
+    reasons = ["unexpected inflation data", "new trade tariffs", "geopolitical shifts", "supply chain breakthroughs"]
+    
+    action = random.choice(actions)
+    region = random.choice(regions)
+    sector = random.choice(sectors)
+    reason = random.choice(reasons)
+    
+    title = f"MARKET ALERT: {sector} sector {action} in {region}"
+    desc = f"Investors are recalibrating portfolios as {reason} drives high volatility in {region}'s {sector} segment."
+    
+    query = title.replace(" ", "+")
+    return {
+        "id": EVENT_ID_COUNTER,
+        "title": title,
+        "description": desc,
+        "source": random.choice(["GeoIntel Monitor", "Reuters", "Financial Times"]),
+        "url": f"https://www.google.com/search?q={query}",
+        "minutes_ago": 0
+    }
+
+DYNAMIC_LEADERS: List[dict] = [
+    {"name": "POTUS", "role": "President, USA", "region": "North America", "statement": "We are actively monitoring the pipeline situation out of Dubai and coordinating with our allies.", "postedAt": "Twitter / X", "timeAgo": "1h ago", "link": "https://www.whitehouse.gov/briefing-room/"},
+    {"name": "Xi Jinping", "role": "President, China", "region": "Asia", "statement": "We will continue to strengthen our domestic manufacturing capabilities in the face of external tariffs.", "postedAt": "State Media", "timeAgo": "1d ago", "link": "https://english.news.cn/"},
+]
+
+def generate_leader_statement() -> dict:
+    """Generates a random world leader statement."""
+    import random
+    leaders = [
+        {"name": "Vladimir Putin", "role": "President, Russia", "region": "Europe", "postedAt": "State Media", "link": "https://en.kremlin.ru/"},
+        {"name": "Tedros Adhanom", "role": "Director-General, WHO", "region": "International Organizations", "postedAt": "Press Briefing", "link": "https://www.who.int/news-room/"},
+        {"name": "Elon Musk", "role": "CEO, X/Tesla", "region": "North America", "postedAt": "Twitter / X", "link": "https://twitter.com/elonmusk"},
+        {"name": "Janet Yellen", "role": "US Treasury Secretary", "region": "North America", "postedAt": "Treasury Press", "link": "https://home.treasury.gov/news/"},
+    ]
+    
+    statements = [
+        "Russia is prepared to reroute more oil exports to India to ensure market stability.",
+        "Global health systems must prepare for potential nuclear fallout scenarios amid rising tensions.",
+        "The committee is prepared to adjust policy stance as appropriate given recent data.",
+        "Energy prices are reaching a critical threshold; emergency stockpiles may be released.",
+        "New trade tariffs on semiconductors are being drafted to protect domestic interests."
+    ]
+    
+    leader = random.choice(leaders)
+    statement = random.choice(statements)
+    
+    return {
+        "name": leader["name"],
+        "role": leader["role"],
+        "region": leader["region"],
+        "statement": statement,
+        "postedAt": leader["postedAt"],
+        "timeAgo": "Just Now",
+        "link": leader["link"]
+    }
+
+def get_time_label(minutes: int) -> str:
+    if minutes < 60:
+        return f"{minutes} mins ago"
+    hours = minutes // 60
+    rem_mins = minutes % 60
+    if hours < 24:
+        return f"{hours} hrs {rem_mins}m ago" if rem_mins > 0 else f"{hours} hrs ago"
+    return "Over 24 hrs ago"
+
+# Global Cache for Enriched Events
+CACHED_EVENTS: List[dict] = []
+
 def monitor_market_crashes():
     """Verifies market health and injects alerts into the bulletin if crashes are detected."""
     global MOCK_ARTICLES
@@ -106,19 +197,73 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 async def push_updates():
+    global CACHED_EVENTS, DYNAMIC_ARTICLES, DYNAMIC_LEADERS, EVENT_ID_COUNTER
     while True:
-        await asyncio.sleep(15)
         try:
-            # Verify market state and inject crash alerts if found
-            monitor_market_crashes()
-            events = get_events_data()
-            await manager.broadcast(events)
-        except Exception:
-            pass
+            # 1. Age existing dynamic news (+2 mins per 5s pulse = 24x speed)
+            for art in DYNAMIC_ARTICLES:
+                art["minutes_ago"] = art.get("minutes_ago", 0) + 2
+            
+            # 2. Prune news older than 24 hours (1440 mins)
+            DYNAMIC_ARTICLES = [a for a in DYNAMIC_ARTICLES if a.get("minutes_ago", 0) < 1440]
+            
+            # 3. Inject new news & new leader statement
+            new_event = generate_market_event()
+            DYNAMIC_ARTICLES.insert(0, new_event)
+            
+            new_leader = generate_leader_statement()
+            DYNAMIC_LEADERS.insert(0, new_leader)
+            
+            # --- ALSO inject leader statement INTO the news bulletin for 6s visibility ---
+            leader_bulletin_item = {
+                "id": f"LDR-{EVENT_ID_COUNTER}",
+                "title": f"SIGNAL: {new_leader['name']} ({new_leader['role']})",
+                "description": new_leader["statement"],
+                "source": new_leader["postedAt"],
+                "url": new_leader["link"],
+                "minutes_ago": 0,
+                "is_breaking": True # Always breaking for leaders
+            }
+            DYNAMIC_ARTICLES.insert(0, leader_bulletin_item)
+            
+            # Prune lists
+            DYNAMIC_LEADERS = DYNAMIC_LEADERS[:20]
+            DYNAMIC_ARTICLES = DYNAMIC_ARTICLES[:50]
+            
+            # --- PRICING SYNC (Independent of News frequency) ---
+            # However, we broadcast structure here, but we'll add a faster secondary task for prices.
+            
+            # 4. Refresh the global cache and broadcast structured data
+            CACHED_EVENTS = get_events_data(force_refresh=True)
+            
+            payload = {
+                "events": CACHED_EVENTS,
+                "leaders": DYNAMIC_LEADERS,
+                "market_data": get_market_state()
+            }
+            await manager.broadcast(payload)
+        except Exception as e:
+            print(f"Error in push_updates: {e}")
+        await asyncio.sleep(5) # Reduced to 5s to meet "under 6s" requirement
+
+async def push_prices():
+    """Independent task for 1-second price updates."""
+    while True:
+        try:
+            update_prices_jitter()
+            payload = {
+                "type": "PRICES_UPDATE",
+                "market_data": get_market_state()
+            }
+            await manager.broadcast(payload)
+        except Exception as e:
+            print(f"Error in push_prices: {e}")
+        await asyncio.sleep(1)
 
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(push_updates())
+    asyncio.create_task(push_prices())
 
 def fetch_from_newsapi() -> List[dict]:
     params = {
@@ -138,16 +283,31 @@ def fetch_from_newsapi() -> List[dict]:
     except Exception:
         return []
 
-def get_events_data(hours: int = 24) -> List[dict]:
-    # Verify market state and inject crash alerts early
-    monitor_market_crashes()
-    raw_articles = fetch_from_newsapi() if NEWSAPI_KEY else MOCK_ARTICLES
-    # Filter based on synthetic 'hours_ago' if using mock data
-    if not NEWSAPI_KEY:
-        filtered = [a for a in raw_articles if a.get("hours_ago", 0) <= hours]
-    else:
-        filtered = raw_articles
-    return [enrich_event(article, idx + 1) for idx, article in enumerate(filtered)]
+def get_events_data(hours: int = 24, force_refresh: bool = False) -> List[dict]:
+    global CACHED_EVENTS, DYNAMIC_ARTICLES
+    
+    if not force_refresh and CACHED_EVENTS:
+        return [e for e in CACHED_EVENTS if e.get("hours_ago", 0) <= hours]
+
+    # Use the dynamic list which is rolling
+    raw_articles = fetch_from_newsapi() if NEWSAPI_KEY else DYNAMIC_ARTICLES
+    
+    # Filter by 24h (just in case, though push_updates prunes it)
+    filtered = [a for a in raw_articles if a.get("minutes_ago", 0) < 1440]
+    
+    enriched = []
+    for article in filtered:
+        # Use existing ID or fallback
+        art_id = article.get("id", 0)
+        ev = enrich_event(article, art_id)
+        # Add the time label
+        mins = article.get("minutes_ago", 0)
+        ev["hours_ago"] = mins // 60
+        ev["time_label"] = get_time_label(mins)
+        enriched.append(ev)
+    
+    CACHED_EVENTS = enriched
+    return enriched
 
 @app.get("/events")
 def get_events(hours: int = 24):

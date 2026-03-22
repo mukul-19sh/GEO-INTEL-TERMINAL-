@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Megaphone, ExternalLink, Globe, Filter, Minus, Square, ChevronDown, ChevronUp } from 'lucide-react';
+import { Megaphone, ExternalLink, Globe, Filter, Minus, ChevronDown, RefreshCw } from 'lucide-react';
 
 const LEADERS = [
   {
@@ -78,13 +78,22 @@ const LEADERS = [
 
 const REGIONS = ["All", "North America", "Europe", "Asia", "Middle East", "International Organizations"];
 
-export default function LeaderBoard() {
+export default function LeaderBoard({ leaders = [] }) {
   const [selectedRegion, setSelectedRegion] = useState("All");
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Combine static leaders with dynamic WebSocket leaders
+  const mergedLeaders = [...leaders, ...LEADERS];
+  
   const filteredLeaders = selectedRegion === "All" 
-    ? LEADERS 
-    : LEADERS.filter(l => l.region === selectedRegion);
+    ? mergedLeaders 
+    : mergedLeaders.filter(l => l.region === selectedRegion);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => setIsRefreshing(false), 1000);
+  };
 
   return (
     <div className={`bg-slate-900/60 border border-slate-700/60 rounded-2xl p-4 backdrop-blur-sm shadow-xl flex flex-col transition-all duration-300 ${isMinimized ? 'max-h-[52px]' : 'max-h-[400px]'}`}>
@@ -95,6 +104,15 @@ export default function LeaderBoard() {
             <h3 className="text-[11px] font-bold uppercase tracking-widest text-white">Global Leaderboard</h3>
           </div>
           <div className="flex items-center gap-1">
+            {!isMinimized && (
+              <button 
+                onClick={handleRefresh}
+                className={`p-1 hover:bg-slate-800 rounded-md text-slate-400 hover:text-blue-400 transition-all ${isRefreshing ? 'animate-spin text-blue-400' : ''}`}
+                title="Refresh Leaderboard"
+              >
+                <RefreshCw size={14} />
+              </button>
+            )}
             <button 
               onClick={() => setIsMinimized(!isMinimized)}
               className="p-1 hover:bg-slate-800 rounded-md text-slate-400 hover:text-white transition-colors"

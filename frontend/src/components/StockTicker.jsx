@@ -54,42 +54,44 @@ const Sparkline = ({ data, isPositive }) => {
   );
 };
 
-export default function StockTicker() {
+export default function StockTicker({ marketData }) {
   const [category, setCategory] = useState('indices');
   const [items, setItems] = useState(MARKET_DATA.indices);
+  const [history, setHistory] = useState({});
 
   useEffect(() => {
-    // Reset data when category changes to get fresh static data
-    setItems(MARKET_DATA[category]);
+    if (!marketData) return;
+    
+    const newItems = marketData[category] || [];
+    setItems(newItems);
 
-    // Live jitter update interval
-    const interval = setInterval(() => {
-      setItems(current => current.map(item => {
-        const jitter = (Math.random() - 0.5) * (item.price * 0.001); // 0.1% jitter
-        const newPrice = Math.max(0.01, item.price + jitter);
-        const pctJitter = (Math.random() - 0.5) * 0.1;
-        
-        // Update history for sparkline by shifting out the oldest and pushing the new value
-        const newHistory = [...item.history.slice(1), newPrice];
-        
-        return { ...item, price: newPrice, change: item.change + pctJitter, history: newHistory };
-      }));
-    }, 2000); 
-
-    return () => clearInterval(interval);
-  }, [category]);
+    // Update history for sparklines
+    setHistory(prev => {
+      const next = { ...prev };
+      newItems.forEach(item => {
+        const key = item.symbol;
+        const currentSeries = next[key] || [item.price];
+        const newSeries = [...currentSeries.slice(-19), item.price]; // keep last 20
+        next[key] = newSeries;
+      });
+      return next;
+    });
+  }, [marketData, category]);
 
   const renderMarketItem = (item, key) => {
-    const isPositive = item.change >= 0;
+    const isPositive = (item.change ?? item.original_change) >= 0;
+    const displayChange = item.change ?? item.original_change;
+    const itemHistory = history[item.symbol] || [item.price];
+
     return (
       <div key={key} className="flex items-center gap-2 px-4 border-l border-slate-700/50 hover:bg-slate-800/50 transition-colors h-full">
         <span className="font-bold text-slate-200 tracking-wide">{item.symbol}</span>
-        <span className="text-slate-400">${item.price.toFixed(2)}</span>
+        <span className="text-slate-400">${item.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         <span className={`flex items-center font-medium ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
           {isPositive ? <TrendingUp size={12} className="mr-0.5" /> : <TrendingDown size={12} className="mr-0.5" />}
-          {Math.abs(item.change).toFixed(2)}%
+          {Math.abs(displayChange).toFixed(2)}%
         </span>
-        <Sparkline data={item.history} isPositive={isPositive} />
+        <Sparkline data={itemHistory} isPositive={isPositive} />
       </div>
     );
   };

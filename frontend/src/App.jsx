@@ -29,10 +29,12 @@ function LiveClock() {
 function App() {
   const [events, setEvents] = useState([]);
   const [selectedEventId, setSelectedEventId] = useState(null);
+  const [leaders, setLeaders] = useState([]);
   const [wsStatus, setWsStatus] = useState('connecting');
   const [isEventsExpanded, setIsEventsExpanded] = useState(true);
   const [breakingEventId, setBreakingEventId] = useState(null);
   const [timeFilter, setTimeFilter] = useState(24);
+  const [marketData, setMarketData] = useState(null);
   const [isImpactDashboardOpen, setIsImpactDashboardOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const ws = useRef(null);
@@ -66,30 +68,55 @@ function App() {
       
       ws.current.onmessage = (event) => {
         if (!isMounted) return;
-        const data = JSON.parse(event.data);
-        
-        // Auto Globe Tracker: Locate unprocessed Breaking News → only pan the globe, no popup
-        const newBreaking = data.find(e => e.is_breaking && !handledBreakingEvents.current.has(e.id));
-        if (newBreaking) {
-          setBreakingEventId(newBreaking.id);
-          handledBreakingEvents.current.add(newBreaking.id);
-          // Clear breakingEventId after the animation sequence completes (~4s)
-          setTimeout(() => setBreakingEventId(null), 4000);
-        }
+        try {
+          const data = JSON.parse(event.data);
+          
+          let eventsList = [];
+          
+          if (data.type === 'PRICES_UPDATE') {
+            setMarketData(data.market_data);
+            return;
+          }
 
-        // Locally filter WebSocket updates to match current UI filter
-        const filtered = data.filter(e => e.hours_ago <= timeFilter);
-        setEvents(filtered);
+          if (data.events && Array.isArray(data.events)) {
+            eventsList = data.events;
+            if (data.leaders && Array.isArray(data.leaders)) {
+              setLeaders(data.leaders);
+            }
+            if (data.market_data) {
+              setMarketData(data.market_data);
+            }
+          } else if (Array.isArray(data)) {
+            eventsList = data;
+          }
+
+          // Auto Globe Tracker: Locate unprocessed Breaking News
+          const newBreaking = eventsList.find(e => e.is_breaking && !handledBreakingEvents.current.has(e.id));
+          if (newBreaking) {
+            setBreakingEventId(newBreaking.id);
+            handledBreakingEvents.current.add(newBreaking.id);
+            setTimeout(() => setBreakingEventId(null), 4000);
+          }
+
+          // Locally filter WebSocket updates to match current UI filter
+          const filtered = eventsList.filter(e => e.hours_ago <= timeFilter);
+          setEvents(filtered);
+        } catch (err) {
+          console.error("WS parse error:", err);
+        }
       };
       
       ws.current.onclose = () => {
         if (isMounted) {
           setWsStatus('offline');
-          reconnectTimeout = setTimeout(connectWS, 3000);
+          // Reduced from 3000ms to 1000ms for faster recovery
+          reconnectTimeout = setTimeout(connectWS, 1000);
         }
       };
     };
 
+    // Initial fetch to populate UI immediately while WS connects
+    fetchEvents(timeFilter);
     connectWS();
 
     return () => {
@@ -128,7 +155,10 @@ function App() {
           <MessageSquare size={20} className="hover:text-green-400 cursor-pointer transition-colors" />
         </div>
         <div className="mt-auto pb-4 flex flex-col items-center gap-1">
-           <div className={`w-2 h-2 rounded-full ${wsStatus === 'online' ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></div>
+           <div className={`w-2 h-2 rounded-full ${
+             wsStatus === 'online' ? 'bg-green-500' : 
+             wsStatus === 'connecting' ? 'bg-yellow-500' : 'bg-red-500'
+           } animate-pulse`}></div>
            <span className="text-[7px] font-bold uppercase tracking-tighter text-slate-600">{wsStatus}</span>
         </div>
       </div>
@@ -166,7 +196,7 @@ function App() {
         </header>
 
         {/* Live Market Ticker */}
-        <StockTicker />
+        <StockTicker marketData={marketData} />
 
         {/* The World View */}
         <div className="flex-1 relative">
@@ -185,8 +215,8 @@ function App() {
 
           {/* Floating Leaderboard overlay */}
           <div className="absolute top-6 right-6 w-80 z-20 space-y-4">
-             <LeaderBoard />
-             <CountryDashboard />
+             <LeaderBoard leaders={leaders} />
+             <CountryDashboard marketData={marketData} />
           </div>
         </div>
 
@@ -218,7 +248,10 @@ function App() {
         </div>
         
         {/* Vertical News Ticker */}
-        <VerticalNewsTicker events={events} />
+        <VerticalNewsTicker 
+          events={events} 
+          onEventSelect={(id) => setSelectedEventId(id)} 
+        />
       </div>
 
       {/* 4. DETAIL OVERLAY */}

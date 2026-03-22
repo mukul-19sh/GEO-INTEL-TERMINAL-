@@ -142,7 +142,12 @@ export default function EventList({
                   : 'bg-slate-800/60 border-slate-700/40 hover:bg-slate-800 hover:border-slate-600'
               }`}
             >
-              {/* Title */}
+              {/* Time Label */}
+              <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase mb-1">
+                <Clock size={10} />
+                {event.time_label}
+              </div>
+              
               <p className={`text-sm font-medium leading-snug line-clamp-2 ${isSelected ? 'text-white' : 'text-slate-200'}`}>
                 {event.title}
               </p>

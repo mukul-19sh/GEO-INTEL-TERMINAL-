@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Clock, TrendingDown, TrendingUp, AlertTriangle, Radio } from 'lucide-react';
 
-function NewsTickerCard({ event, idx }) {
+function NewsTickerCard({ event, idx, onEventSelect }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isCritical = event.is_breaking;
   
@@ -19,11 +19,15 @@ function NewsTickerCard({ event, idx }) {
   const hasMore = sectors.length > maxSectors || companies.length > maxCompanies;
 
   return (
-    <div key={idx} className={`p-3 rounded-xl border mb-4 w-full backdrop-blur-sm transition-all duration-300 ${isCritical ? 'bg-red-950/20 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.3)]' : 'bg-slate-900/60 border-slate-700/60 shadow-lg'}`}>
+    <div 
+      key={idx} 
+      onClick={() => onEventSelect(event.id)}
+      className={`p-3 rounded-xl border mb-4 w-full text-left backdrop-blur-sm transition-all duration-300 cursor-pointer group ${isCritical ? 'bg-red-950/20 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.3)]' : 'bg-slate-900/60 border-slate-700/60 shadow-lg hover:border-slate-500'}`}
+    >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5 text-[9px] font-bold tracking-widest text-slate-500 uppercase">
           {isCritical ? <Radio size={10} className="text-red-500 animate-pulse" /> : <Clock size={10} />}
-          {isCritical ? <span className="text-red-400">BREAKING LIVE</span> : "Just In"}
+          {isCritical ? <span className="text-red-400">BREAKING LIVE | {event.time_label}</span> : event.time_label}
         </div>
         {isCritical && <AlertTriangle size={12} className="text-red-500 animate-pulse" />}
       </div>
@@ -35,15 +39,25 @@ function NewsTickerCard({ event, idx }) {
          <span className="text-[9px] text-slate-400 truncate w-32">{event.source}</span>
       </div>
       
-      <h4 className="text-[12px] font-medium text-slate-200 mb-2 leading-snug">
-        {event.title}
-      </h4>
-      
-      {event.url && (
-        <a href={event.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[9px] font-bold text-blue-400 hover:text-blue-300 transition-colors uppercase mb-3 px-2 py-1 bg-slate-800/80 hover:bg-slate-800 rounded border border-slate-700 w-max">
-          View Article ↗
-        </a>
-      )}
+      <div className="flex items-center gap-2 mb-3">
+        {event.url && (
+          <a 
+            href={event.url} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 text-[9px] font-bold text-blue-400 hover:text-blue-300 transition-colors uppercase px-2 py-1 bg-blue-500/10 hover:bg-blue-500/20 rounded border border-blue-500/30 w-max"
+          >
+            Source Analysis ↗
+          </a>
+        )}
+        <button 
+          onClick={(e) => { e.stopPropagation(); onEventSelect(event.id); }}
+          className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-white transition-colors uppercase px-2 py-1 bg-slate-800/80 hover:bg-slate-700 rounded border border-slate-700 w-max"
+        >
+          Details ↗
+        </button>
+      </div>
       
       <div className="border-t border-slate-700/50 pt-2 space-y-2">
         {sectors.length > 0 && (
@@ -88,7 +102,7 @@ function NewsTickerCard({ event, idx }) {
   );
 }
 
-export default function VerticalNewsTicker({ events = [] }) {
+export default function VerticalNewsTicker({ events = [], onEventSelect }) {
   const scrollRef = useRef(null);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -128,10 +142,10 @@ export default function VerticalNewsTicker({ events = [] }) {
       >
         <div className="flex flex-col pt-4">
           {events.map((item, idx) => (
-            <NewsTickerCard key={`n1-${item.id}-${idx}`} event={item} idx={`n1-${idx}`} />
+            <NewsTickerCard key={`n1-${item.id}-${idx}`} event={item} idx={`n1-${idx}`} onEventSelect={onEventSelect} />
           ))}
           {events.map((item, idx) => (
-            <NewsTickerCard key={`n2-${item.id}-${idx}`} event={item} idx={`n2-${idx}`} />
+            <NewsTickerCard key={`n2-${item.id}-${idx}`} event={item} idx={`n2-${idx}`} onEventSelect={onEventSelect} />
           ))}
         </div>
       </div>

@@ -130,10 +130,10 @@ def extract_location(text: str) -> dict | None:
     return None
 
 
-from impact import map_impact
-from explanation import generate_explanation
-from confidence import calculate_confidence
-from similarity import find_similar_events
+from .impact import map_impact
+from .explanation import generate_explanation
+from .confidence import calculate_confidence
+from .similarity import find_similar_events
 
 def enrich_event(raw: dict, event_id: int) -> dict:
     """

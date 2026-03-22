@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Flag, TrendingUp, TrendingDown, Layout, Globe, Search, Minus, ChevronDown } from 'lucide-react';
+import { Flag, TrendingUp, TrendingDown, Layout, Globe, Search, Minus, ChevronDown, RefreshCw } from 'lucide-react';
 
 const COUNTRY_DATA = {
   "India": {
@@ -90,10 +90,30 @@ const COUNTRY_DATA = {
   }
 };
 
-export default function CountryDashboard() {
+export default function CountryDashboard({ marketData }) {
   const [selectedCountry, setSelectedCountry] = useState("India");
   const [isMinimized, setIsMinimized] = useState(false);
-  const data = COUNTRY_DATA[selectedCountry];
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => setIsRefreshing(false), 1000);
+  };
+
+  // Merge hardcoded data with live WebSocket data
+  const baseData = COUNTRY_DATA[selectedCountry];
+  const liveStocks = marketData?.stocks?.[selectedCountry] || [];
+  
+  const data = {
+    ...baseData,
+    stocks: baseData.stocks.map(stock => {
+      const live = liveStocks.find(s => s.symbol === stock.symbol);
+      if (live) {
+        return { ...stock, price: live.price, change: live.change };
+      }
+      return stock;
+    })
+  };
 
   return (
     <div className={`bg-slate-900/60 border border-slate-700/60 rounded-2xl p-4 backdrop-blur-sm shadow-xl flex flex-col mt-4 transition-all duration-300 ${isMinimized ? 'max-h-[52px]' : 'max-h-[500px]'}`}>
@@ -106,6 +126,15 @@ export default function CountryDashboard() {
             <h3 className="text-[11px] font-bold uppercase tracking-widest text-white">Country Intel</h3>
           </div>
           <div className="flex items-center gap-1">
+            {!isMinimized && (
+              <button 
+                onClick={handleRefresh}
+                className={`p-1 hover:bg-slate-800 rounded-md text-slate-400 hover:text-yellow-400 transition-all ${isRefreshing ? 'animate-spin text-yellow-400' : ''}`}
+                title="Refresh Country Intel"
+              >
+                <RefreshCw size={14} />
+              </button>
+            )}
             <button 
               onClick={() => setIsMinimized(!isMinimized)}
               className="p-1 hover:bg-slate-800 rounded-md text-slate-400 hover:text-white transition-colors"
